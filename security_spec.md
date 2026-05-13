@@ -1,30 +1,67 @@
-# Security Specification - Mynt Banking
+# Security Specification for Mynt
 
-## 1. Data Invariants
-- **Identity Integrity**: A user can only access their own user profile, transactions, and savings pots.
-- **Relational Consistency**: Transactions and Pots must be child resources of a valid User document.
-- **Immutability**: `createdAt` and `ownerId` fields must never change after creation.
-- **Financial Safety**: Zero-balance check is not enforced on delete (pots can be emptied), but negative increments are restricted by application logic.
-- **Admin Supremacy**: Users in the admin whitelist can view all KYC submissions and manage user statuses.
+## Data Invariants
+1. A user profile (`/users/{userId}`) can only be created by the user themselves.
+2. A user's balance can only be modified by the system or via validated transactions.
+3. Transactions (`/users/{userId}/transactions/{txId}`) must always link to the owner and have a server-timestamped `createdAt`.
+4. KYC submissions (`/kyc_submissions/{subId}`) can be created by any verified user but only read/managed by admins or the owner.
 
-## 2. The "Dirty Dozen" Payloads
-These payloads represent attempts to bypass security and should be rejected.
+## The Dirty Dozen (Attack Payloads)
 
-1. **Identity Spoofing**: Creating a profile for another user ID.
-2. **Shadow Updates**: Injecting `kycCompleted: true` during a standard profile update.
-3. **Transaction Poisoning**: Creating a transaction in another user's subcollection.
-4. **Id Poisoning**: Using a 1MB string as a Document ID to cause resource exhaustion.
-5. **Timestamp Spoofing**: Providing a backdated `createdAt` timestamp from the client.
-6. **Cross-User Leak**: Attempting to list transactions of another user by bypassing the `where` clause.
-7. **Role Escalation**: Attempting to update a user document with `accountStatus: 'active'` without admin credentials.
-8. **Pot Orphanage**: Creating a pot with a non-existent parent user check (relational sync).
-9. **Field Pollution**: Adding arbitrary fields like `isAdmin: true` to a user document.
-10. **State Skipping**: Moving a KYC status from `pending` to `approved` via the client SDK.
-11. **PII Harvesting**: Attempting a `get` request on a private user info document.
-12. **Array Bloating**: Attempting to push 10,000 tags into a document to exceed the 1MB limit.
+1. **Identity Spoofing**: Attempt to create a user profile for a different UID.
+   - Path: `/users/target_uid`
+   - Payload: `{ "uid": "attacker_uid", "email": "attacker@example.com", "balance": 1000000 }`
+   - Goal: Gain access to another user's profile.
 
-## 3. Test Scenarios
-- **Scenario A**: Authenticated user `A` tries to read `users/B/transactions`. (Expect: DENIED)
-- **Scenario B**: User `A` tries to update `users/A` but includes `stripeAccountId: 'attacker_id'`. (Expect: DENIED)
-- **Scenario C**: Anonymous user tries to read any collection. (Expect: DENIED)
-- **Scenario D**: Logged in user tries to create a pot without a `name`. (Expect: DENIED via isValidPot)
+2. **Privilege Escalation**: Attempt to set `isAdmin` or similar admin flags in user profile.
+   - Path: `/users/attacker_uid`
+   - Payload: `{ "uid": "attacker_uid", "email": "attacker@example.com", "isAdmin": true, "balance": 0 }`
+   - Goal: Become an administrator.
+
+3. **Shadow Update**: Attempt to update a user's balance directly.
+   - Path: `/users/attacker_uid` (Update)
+   - Payload: `{ "balance": 50000 }`
+   - Goal: Arbitrarily increase balance.
+
+4. **Resource Poisoning (ID)**: Attempt to create a document with a massive string ID to cause denial of wallet.
+   - Path: `/users/REALLY_LONG_ID_..._1MB_STRING`
+   - Goal: Resource exhaustion.
+
+5. **Resource Poisoning (Field)**: Attempt to inject a massive string into a text field.
+   - Path: `/users/attacker_uid`
+   - Payload: `{ "displayName": "A".repeat(1000000) }`
+   - Goal: Resource exhaustion.
+
+6. **State Shortcutting**: Attempt to approve own KYC.
+   - Path: `/kyc_submissions/attacker_sub_id` (Update)
+   - Payload: `{ "status": "approved" }`
+   - Goal: Skip verification steps.
+
+7. **Orphaned Writes**: Attempt to create a transaction without a valid user profile.
+   - Path: `/users/non_existent_user/transactions/tx_1`
+   - Goal: Create data inconsistent with the hierarchy.
+
+8. **Timestamp Spoofing**: Attempt to set a custom `createdAt` date in the past or future.
+   - Path: `/users/attacker_uid/transactions/tx_1`
+   - Payload: `{ "createdAt": "2020-01-01T00:00:00Z", ... }`
+   - Goal: Manipulate history.
+
+9. **PII Leakage**: Attempt to read the entire `users` collection.
+   - Path: `/users` (List)
+   - Goal: Scrape user emails and data.
+
+10. **Counterparty Injection**: Attempt to create a transaction where the sender doesn't match the auth UID.
+    - Path: `/users/victim_uid/transactions/tx_1`
+    - Payload: `{ "userId": "victim_uid", "amount": 1000, ... }`
+    - Goal: Steal funds (if logic depends on resource data).
+
+11. **Type Confusion**: Attempt to set balance as a string.
+    - Path: `/users/attacker_uid` (Update)
+    - Payload: `{ "balance": "one billion" }`
+    - Goal: Break application logic or validation.
+
+12. **Recursive Cost Attack**: Attempt to trigger deep recursive lookups (if rules were written recursively).
+    - Goal: Extreme billing for Firestore.
+
+## Test Runner
+Verified via `firestore.rules.test.ts`.

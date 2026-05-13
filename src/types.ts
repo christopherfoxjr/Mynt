@@ -1,7 +1,7 @@
 export interface Transaction {
   id: string;
   name: string;
-  type: 'receive' | 'spend' | 'send';
+  type: 'receive' | 'spend' | 'send' | 'deposit' | 'withdrawal' | 'transfer';
   amount: number;
   date: string;
   status: string;

@@ -2,73 +2,86 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 0. Global safety net
+    // 0. Global Safety Net
     match /{document=**} {
       allow read, write: if false;
     }
 
     // Phase 3: Primitives
     function isSignedIn() { return request.auth != null; }
-    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
-    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isVerified() && request.auth.uid == userId; }
     function isAdmin() { 
-      return isSignedIn() && (request.auth.token.email in ['spoinkosgithub@gmail.com', 'blooper.it@gmail.com']);
+      return isVerified() && (request.auth.token.email in ['spoinkosgithub@gmail.com', 'blooper.it@gmail.com']);
     }
+    
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
 
-    // User Patterns
+    // Pillar 2: Validation Blueprints
     function isValidUser(data) {
-      return data.uid is string && 
-             data.email is string && 
+      return data.uid == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
              data.balance is number &&
-             data.uid == request.auth.uid; // Identity Safety
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 512));
     }
 
-    // Transaction Patterns
     function isValidTransaction(data) {
-      return data.type in ['receive', 'spend', 'send', 'deposit', 'withdrawal', 'transfer'] &&
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.type in ['receive', 'spend', 'send', 'deposit', 'withdrawal', 'transfer'] &&
              data.amount is number &&
              data.status in ['pending', 'completed', 'failed'] &&
-             data.createdAt == request.time; // Server Timestamp Enforcement
+             data.createdAt == request.time;
     }
 
-    // Pots Patterns
-    function isValidPot(data) {
-      return data.name is string && data.name.size() > 0 &&
-             data.balance is number &&
-             data.goal is number;
-    }
-
-    // 1. User Profiles
+    // User Patterns
     match /users/{userId} {
+      // Pillar 3: Path Variable Hardening
       allow get: if isOwner(userId) || isAdmin();
+      // Pillar 8: Secure List Queries
       allow list: if isAdmin();
-      allow create: if isOwner(userId) && isValidUser(incoming());
-      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'leaf', 'cardFrozen', 'balance'])) || isAdmin();
+      
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && 
+                    incoming().keys().hasAll(['uid', 'email', 'balance']) &&
+                    incoming().keys().size() >= 3;
+      
+      // Pillar 4: Tiered Identity Logic
+      allow update: if isVerified() && (
+        // Admin can update anything
+        isAdmin() || 
+        // Owner can update profile fields but NOT balance directly (in a real app, balance would be via transactions)
+        // For this demo, we allow owner to update profile fields
+        (isOwner(userId) && isValidUser(incoming()) && 
+         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'birthDate', 'accountType', 'updatedAt']))
+      );
+
+      match /transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidId(txId) && isValidTransaction(incoming());
+      }
+
+      match /pots/{potId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+      
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
     }
 
-    // 2. Transactions (Subcollection)
-    match /users/{userId}/transactions/{txId} {
-      allow get, list: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidTransaction(incoming());
-      allow update: if false; // Transactions are immutable
-      allow delete: if isAdmin();
-    }
-
-    // 3. Pots (Subcollection)
-    match /users/{userId}/pots/{potId} {
-        allow get, list: if isOwner(userId) || isAdmin();
-        allow create: if isOwner(userId) && isValidPot(incoming());
-        allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'balance', 'goal', 'targetDate']);
-        allow delete: if isOwner(userId);
-    }
-
-    // 4. KYC Submissions
     match /kyc_submissions/{subId} {
-        allow create: if isSignedIn() && incoming().userId == request.auth.uid;
-        allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-        allow list, update, delete: if isAdmin();
+      allow create: if isVerified() && isValidId(subId) && incoming().userId == request.auth.uid;
+      allow read: if isAdmin() || (isVerified() && existing().userId == request.auth.uid);
+      // Only admins can update KYC status
+      allow update: if isAdmin();
+    }
+
+    // Connectivity Test
+    match /test/{docId} {
+      allow read, write: if true;
     }
   }
 }

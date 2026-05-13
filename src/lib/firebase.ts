@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, initializeFirestore } from 'firebase/firestore';
 import firebaseConfigRaw from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -16,12 +16,29 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+console.log('Firebase App Options:', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  databaseId: firebaseConfig.firestoreDatabaseId
+});
+
 let dbInstance;
 try {
-  console.log(`Initializing Firestore with database: ${firebaseConfig.firestoreDatabaseId || '(default)'}`);
-  dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+  console.log(`Initializing client Firestore with database: ${dbId}`);
+  
+  if (dbId !== '(default)') {
+    dbInstance = initializeFirestore(app, {
+      databaseId: dbId
+    });
+    
+    // We can't easily "probe" and switch doc/collection refs once they are created,
+    // but the testConnection will tell us if it's working.
+  } else {
+    dbInstance = getFirestore(app);
+  }
 } catch (error) {
-  console.warn("Failed to initialize with named database, falling back to (default)", error);
+  console.warn("Firestore initialization failed, using fallback", error);
   dbInstance = getFirestore(app);
 }
 
@@ -30,11 +47,34 @@ export const auth = getAuth(app);
 
 // Connectivity check as per instructions
 async function testConnection() {
+  const testDocId = 'connection';
+  const testPath = 'test/' + testDocId;
+  
+  // Wait a bit for Auth to initialize
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  console.log(`Checking client connectivity for: ${testPath}`);
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration or network.");
+    const snap = await getDoc(doc(db, 'test', testDocId));
+    console.log("Firestore Connectivity Test: SUCCESS", snap.exists() ? "Document found" : "Document not found (expected)");
+  } catch (error: any) {
+    console.error("Firestore Connectivity Test: FAILED", {
+      code: error.code,
+      message: error.message,
+      database: (firebaseConfigRaw as any).firestoreDatabaseId || '(default)',
+      projectId: firebaseConfig.projectId
+    });
+    
+    // Attempt fallback only if it looks like a network or database-not-found error
+    if (error.message && (error.message.includes('offline') || error.message.includes('Failed to get document'))) {
+      console.warn("Retrying connectivity test with (default) database...");
+      try {
+        const fallbackDb = getFirestore(app);
+        const fallbackSnap = await getDoc(doc(fallbackDb, 'test', testDocId));
+        console.log("Firestore FALLBACK (default) Test: SUCCESS");
+      } catch (fallbackError: any) {
+        console.error("Firestore FALLBACK Test: FAILED", fallbackError.message);
+      }
     }
   }
 }

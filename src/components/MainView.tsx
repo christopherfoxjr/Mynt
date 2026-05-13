@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Plus, Send, ChevronRight, ArrowDownCircle, Download, Calendar, TrendingUp, TrendingDown, Wallet, Bell } from 'lucide-react';
+import { Plus, Send, ChevronRight, ArrowDownCircle, Download, Calendar, TrendingUp, TrendingDown, Wallet, Bell, CreditCard } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Transaction } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -25,13 +25,15 @@ export function MainView({
   const { notifications, clearAll } = useNotifications();
 
   const isRestricted = !user?.kycCompleted;
+  const hasStripeAccount = !!user?.stripeAccountId;
+  const hasFinancialAccount = !!user?.financialAccountId;
 
   const moneyIn = transactions
-    .filter(tx => tx.type === 'receive')
+    .filter(tx => (tx.type as string) === 'receive' || (tx.type as string) === 'deposit')
     .reduce((sum, tx) => sum + tx.amount, 0);
   
   const moneyOut = Math.abs(transactions
-    .filter(tx => tx.type === 'spend' || tx.type === 'send')
+    .filter(tx => (tx.type as string) === 'spend' || (tx.type as string) === 'send' || (tx.type as string) === 'withdrawal')
     .reduce((sum, tx) => sum + tx.amount, 0));
 
   const netFlow = moneyIn - moneyOut;
@@ -115,32 +117,71 @@ export function MainView({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-[#0f172a] rounded-[48px] p-10 md:p-12 mb-10 relative overflow-hidden text-white shadow-2xl"
+        className="bg-slate-900 rounded-[48px] p-10 md:p-12 mb-10 relative overflow-hidden text-white shadow-2xl border border-slate-800"
       >
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/20 rounded-full blur-[100px] -mr-40 -mt-40 animate-pulse"></div>
+        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-[100px] -mr-40 -mt-40"></div>
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] -ml-40 -mb-40"></div>
         
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 relative z-10 font-display">
           <div>
-            <p className="text-slate-400 font-bold mb-4 uppercase tracking-[0.3em] text-[10px]">Current Mynt Balance</p>
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-[10px]">Total Balance</p>
+              {!hasStripeAccount && (
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-[8px] font-black uppercase tracking-tighter rounded-full border border-amber-500/30">Connect Required</span>
+              )}
+            </div>
             <div className="flex items-center gap-4">
-              <span className="text-6xl md:text-8xl font-bold tracking-tighter leading-none italic">
+              <span className="text-6xl md:text-8xl font-black tracking-tighter leading-none italic">
                 ${(user?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>
           <div className="flex flex-wrap gap-4">
-            <button onClick={onAddClick} className="px-10 py-5 bg-emerald-500 text-white font-bold rounded-2xl flex items-center gap-3 group hover:bg-emerald-400 transition-all shadow-xl shadow-emerald-500/20 active:scale-95">
-              <Plus size={24} className="group-hover:rotate-90 transition-transform" />
-              Deposit
+            <button 
+              onClick={onAddClick} 
+              className={cn(
+                "px-10 py-5 font-bold rounded-2xl flex items-center gap-3 transition-all shadow-xl active:scale-95",
+                hasStripeAccount ? "bg-emerald-500 text-white hover:bg-emerald-400 shadow-emerald-500/20" : "bg-slate-800 text-slate-400 opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Plus size={24} />
+              Add Money
             </button>
-            <button onClick={onSendClick} className="px-10 py-5 bg-slate-800 text-white font-bold rounded-2xl flex items-center gap-3 hover:bg-slate-700 transition-all border border-slate-700 active:scale-95">
+            <button 
+              onClick={onSendClick} 
+              className={cn(
+                "px-10 py-5 font-bold rounded-2xl flex items-center gap-3 transition-all border active:scale-95",
+                hasStripeAccount ? "bg-white text-slate-900 hover:bg-slate-100 border-white shadow-lg" : "bg-slate-800 text-slate-400 border-slate-700 opacity-50 cursor-not-allowed"
+              )}
+            >
               <Send size={20} />
-              Transfer
+              Send
             </button>
           </div>
         </div>
       </motion.section>
+
+      {!hasStripeAccount && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 p-8 bg-white border border-slate-100 rounded-[40px] shadow-sm flex flex-col md:flex-row items-center gap-8"
+        >
+          <div className="w-20 h-20 bg-emerald-50 rounded-[32px] flex items-center justify-center text-emerald-600 shrink-0">
+            <CreditCard size={32} />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h3 className="text-2xl font-bold font-display text-slate-900 mb-2">Connect your bank with Stripe</h3>
+            <p className="text-slate-500 font-medium">Link your account to enable real-time deposits, transfers, and high-yield vaults.</p>
+          </div>
+          <button 
+            onClick={onKYCClick}
+            className="px-10 py-4 bg-black text-white font-bold rounded-2xl hover:bg-slate-800 transition-all active:scale-95 shadow-xl"
+          >
+            Get Started
+          </button>
+        </motion.div>
+      )}
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12">

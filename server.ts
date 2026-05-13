@@ -13,106 +13,99 @@ import cookieParser from "cookie-parser";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// No-op - we'll use process.cwd() instead for path resolution
 
-// Load Firebase Config
-const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
+// Firebase Config
+const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
 
-// Use config directly to avoid stale environment variables
 const firebaseConfig = {
   projectId: config.projectId,
   firestoreDatabaseId: config.firestoreDatabaseId,
 };
 
+console.log("Environment Debug:", {
+  GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
+  CONFIG_PROJECT_ID: firebaseConfig.projectId,
+  NODE_ENV: process.env.NODE_ENV
+});
+
 // Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    const options: any = {
-      projectId: firebaseConfig.projectId,
-    };
-    initializeApp(options);
-    console.log(`Firebase Admin initialized with Project ID: ${firebaseConfig.projectId}`);
-  } catch (err: any) {
-    console.error("Firebase Admin initialization failed:", err.message);
-    initializeApp(); // Absolute fallback
+// We explore both ambient and config project IDs to resolve audience mismatches
+const configProjectId = firebaseConfig.projectId;
+let adminApp: any;
+
+try {
+  // Try default first to get ambient credentials
+  const ambientApp = initializeApp();
+  console.log(`Ambient Firebase initialized. Project: ${ambientApp.options.projectId}`);
+  
+  if (ambientApp.options.projectId !== configProjectId && configProjectId) {
+    console.warn(`Project ID mismatch! Ambient: ${ambientApp.options.projectId}, Config: ${configProjectId}`);
+    console.log("Creating second app for config project to match Auth audience...");
+    adminApp = initializeApp({
+      projectId: configProjectId,
+    }, "config-app");
+  } else {
+    adminApp = ambientApp;
   }
+} catch (e: any) {
+  console.error("Firebase default initialization failed, forcing config project:", e.message);
+  adminApp = initializeApp({
+    projectId: configProjectId,
+  }, "config-app");
 }
+
+console.log(`Final Admin App Name: ${adminApp.name}, Project: ${adminApp.options.projectId}`);
 
 let db: any;
-try {
-  const databaseId = firebaseConfig.firestoreDatabaseId || '(default)';
-  console.log(`Attempting Firestore init with database ID: ${databaseId}`);
+async function initializeFirestoreAdmin() {
+  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
+  console.log(`Initializing Admin Firestore for ${dbId}...`);
   
-  const adminApp = getApps()[0];
-  if (databaseId && databaseId !== '(default)') {
-    db = getFirestore(adminApp, databaseId);
-    console.log(`Firestore initialized with NAMED Database ID: ${databaseId}`);
-  } else {
-    db = getFirestore(adminApp);
-    console.log("Firestore initialized with DEFAULT Database ID");
-  }
-} catch (error: any) {
-  console.error("CRITICAL: Firestore initialization failed!", error.message);
-  db = getFirestore();
-}
-
-const OperationType = {
-  CREATE: 'create',
-  UPDATE: 'update',
-  DELETE: 'delete',
-  LIST: 'list',
-  GET: 'get',
-  WRITE: 'write',
-} as const;
-
-// If you need the type:
-type OperationType = (typeof OperationType)[keyof typeof OperationType];
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  serverTime: string;
-  projectId: string | null;
-  databaseId: string | null;
-}
-
-function handleFirestoreError(error: any, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error.message || String(error),
-    operationType,
-    path,
-    serverTime: new Date().toISOString(),
-    projectId: firebaseConfig.projectId,
-    databaseId: firebaseConfig.firestoreDatabaseId
-  };
-  console.error('Firestore Admin Error: ', JSON.stringify(errInfo));
-  return errInfo;
-}
-
-// Test database connectivity on startup and fallback if needed
-(async () => {
   try {
-    console.log(`Checking connectivity for database: ${firebaseConfig.firestoreDatabaseId || "(default)"}`);
-    await db.collection("users").limit(1).get();
-    console.log("Firestore Connectivity Test: SUCCESS");
-  } catch (error: any) {
-    console.error("Firestore Connectivity Test: FAILED", error.message);
-    if (error.code === 7 || error.message.includes('permission') || error.message.includes('not found')) {
-      console.warn("Permission denied or database not found for named database. Attempting fallback to (default) database...");
+    // We try both apps if needed
+    const appsToTry = [adminApp];
+    if (getApps().find(a => a.name === '[DEFAULT]') && adminApp.name !== '[DEFAULT]') {
+      appsToTry.push(getApps().find(a => a.name === '[DEFAULT]')!);
+    }
+
+    for (const app of appsToTry) {
+      console.log(`Probing Firestore on App: ${app.name} (${app.options.projectId}) for database: ${dbId}`);
       try {
-        const adminApp = getApps()[0];
-        const fallbackDb = getFirestore(adminApp); // Uses (default)
-        await fallbackDb.collection("users").limit(1).get();
-        db = fallbackDb;
-        console.log("Fallback to (default) database: SUCCESS");
-      } catch (fallbackErr: any) {
-        console.error("Fallback to (default) database: FAILED", fallbackErr.message);
+        const testDb = dbId !== '(default)' ? getFirestore(app, dbId) : getFirestore(app);
+        const snap = await testDb.collection("test").limit(1).get();
+        console.log(`Firestore SUCCESS on App: ${app.name}, Database: ${dbId}`);
+        db = testDb;
+        return;
+      } catch (e: any) {
+        console.warn(`Probe FAILED on App: ${app.name}, Database: ${dbId}: ${e.message}`);
       }
     }
+
+    // If we reach here, named database failed. Try default database on all apps.
+    console.warn("Named database probe failed on all apps. Trying (default) database fallback...");
+    for (const app of appsToTry) {
+      try {
+        const fallbackDb = getFirestore(app);
+        await fallbackDb.collection("test").limit(1).get();
+        console.log(`Firestore SUCCESS on App: ${app.name}, Database: (default)`);
+        db = fallbackDb;
+        return;
+      } catch (e: any) {
+        console.warn(`Fallback probe FAILED on App: ${app.name}, Database: (default): ${e.message}`);
+      }
+    }
+
+    throw new Error("All Firestore probes failed.");
+  } catch (error: any) {
+    console.error("CRITICAL: Firestore Admin initialization failed!", error.message);
+    db = getFirestore(adminApp);
   }
-})();
+}
+
+// Helper to get Auth with our specific app
+const getAdminAuth = () => getAuth(adminApp);
 
 const ADMIN_EMAILS = ["spoinkosgithub@gmail.com", "blooper.it@gmail.com"];
 
@@ -209,7 +202,7 @@ async function startServer() {
 
     const token = authHeader.split(' ')[1];
     try {
-      const decodedToken = await getAuth().verifyIdToken(token);
+      const decodedToken = await getAdminAuth().verifyIdToken(token);
       req.user = decodedToken;
       next();
     } catch (error: any) {
@@ -1006,4 +999,45 @@ async function startServer() {
   });
 }
 
-startServer();
+const OperationType = {
+  CREATE: 'create',
+  UPDATE: 'update',
+  DELETE: 'delete',
+  LIST: 'list',
+  GET: 'get',
+  WRITE: 'write',
+} as const;
+
+type OperationType = (typeof OperationType)[keyof typeof OperationType];
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  serverTime: string;
+  projectId: string | null;
+  databaseId: string | null;
+}
+
+function handleFirestoreError(error: any, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error.message || String(error),
+    operationType,
+    path,
+    serverTime: new Date().toISOString(),
+    projectId: firebaseConfig.projectId,
+    databaseId: db?.databaseId || firebaseConfig.firestoreDatabaseId
+  };
+  console.error('Firestore Admin Error: ', JSON.stringify(errInfo));
+  return errInfo;
+}
+
+async function run() {
+  await initializeFirestoreAdmin();
+  await startServer();
+}
+
+run().catch(err => {
+  console.error("Fatal startup error:", err);
+  process.exit(1);
+});
