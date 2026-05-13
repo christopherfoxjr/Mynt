@@ -36,72 +36,67 @@ const configProjectId = firebaseConfig.projectId;
 let adminApp: any;
 
 try {
-  // Try default first to get ambient credentials
-  const ambientApp = initializeApp();
-  console.log(`Ambient Firebase initialized. Project: ${ambientApp.options.projectId}`);
-  
-  if (ambientApp.options.projectId !== configProjectId && configProjectId) {
-    console.warn(`Project ID mismatch! Ambient: ${ambientApp.options.projectId}, Config: ${configProjectId}`);
-    console.log("Creating second app for config project to match Auth audience...");
+  // Try to use the config project ID for the default app if possible
+  if (getApps().length === 0) {
     adminApp = initializeApp({
       projectId: configProjectId,
-    }, "config-app");
+    });
+    console.log(`Firebase Admin initialized with Project: ${configProjectId}`);
   } else {
-    adminApp = ambientApp;
+    // If a default app already exists, we check if its project matches
+    const defaultApp = getApps()[0];
+    if (defaultApp.options.projectId !== configProjectId && configProjectId) {
+      console.warn(`Project ID mismatch! Ambient: ${defaultApp.options.projectId}, Config: ${configProjectId}`);
+      // We create a named app to specifically handle Auth for the config project
+      adminApp = initializeApp({
+        projectId: configProjectId,
+      }, "config-auth-app");
+      console.log(`Created secondary Firebase App 'config-auth-app' for Project: ${configProjectId}`);
+    } else {
+      adminApp = defaultApp;
+    }
   }
 } catch (e: any) {
-  console.error("Firebase default initialization failed, forcing config project:", e.message);
-  adminApp = initializeApp({
-    projectId: configProjectId,
-  }, "config-app");
+  console.error("Firebase Admin initialization failed, forcing named app:", e.message);
+  try {
+    adminApp = initializeApp({
+      projectId: configProjectId,
+    }, "fallback-app");
+  } catch (err) {
+    adminApp = getApps()[0];
+  }
 }
 
-console.log(`Final Admin App Name: ${adminApp.name}, Project: ${adminApp.options.projectId}`);
+console.log(`Final Admin App choice: ${adminApp.name} (Project: ${adminApp.options.projectId})`);
 
 let db: any;
 async function initializeFirestoreAdmin() {
   const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-  console.log(`Initializing Admin Firestore for ${dbId}...`);
+  console.log(`Initializing Admin Firestore. Preferred: ${dbId} in ${adminApp.options.projectId}`);
   
-  try {
-    // We try both apps if needed
-    const appsToTry = [adminApp];
-    if (getApps().find(a => a.name === '[DEFAULT]') && adminApp.name !== '[DEFAULT]') {
-      appsToTry.push(getApps().find(a => a.name === '[DEFAULT]')!);
-    }
+  // Potential apps to try
+  const apps = [...getApps()];
+  // Potential database IDs to try
+  const dbIds = [dbId, '(default)'];
 
-    for (const app of appsToTry) {
-      console.log(`Probing Firestore on App: ${app.name} (${app.options.projectId}) for database: ${dbId}`);
+  for (const app of apps) {
+    for (const dId of dbIds) {
+      console.log(`Probing Firestore on App: ${app.name} (${app.options.projectId}), Database: ${dId}`);
       try {
-        const testDb = dbId !== '(default)' ? getFirestore(app, dbId) : getFirestore(app);
-        const snap = await testDb.collection("test").limit(1).get();
-        console.log(`Firestore SUCCESS on App: ${app.name}, Database: ${dbId}`);
+        const testDb = dId !== '(default)' ? getFirestore(app, dId) : getFirestore(app);
+        // We do a real read to verify connectivity and project existence
+        await testDb.collection("users").limit(1).get();
+        console.log(`SUCCESS: Firestore reachable on ${app.name} / ${dId}`);
         db = testDb;
         return;
       } catch (e: any) {
-        console.warn(`Probe FAILED on App: ${app.name}, Database: ${dbId}: ${e.message}`);
+        console.warn(`Probe FAILED on ${app.name} / ${dId}: ${e.message}`);
       }
     }
-
-    // If we reach here, named database failed. Try default database on all apps.
-    console.warn("Named database probe failed on all apps. Trying (default) database fallback...");
-    for (const app of appsToTry) {
-      try {
-        const fallbackDb = getFirestore(app);
-        await fallbackDb.collection("test").limit(1).get();
-        console.log(`Firestore SUCCESS on App: ${app.name}, Database: (default)`);
-        db = fallbackDb;
-        return;
-      } catch (e: any) {
-        console.warn(`Fallback probe FAILED on App: ${app.name}, Database: (default): ${e.message}`);
-      }
-    }
-
-    throw new Error("All Firestore probes failed.");
-  } catch (error: any) {
-    console.error("CRITICAL: Firestore Admin initialization failed!", error.message);
-    db = getFirestore(adminApp);
   }
+
+  console.error("CRITICAL: All Firestore probes failed. Defaulting to first available instance.");
+  db = getFirestore(adminApp);
 }
 
 // Helper to get Auth with our specific app
