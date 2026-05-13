@@ -20,6 +20,8 @@ import { db, auth } from '../lib/firebase';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { cn } from '../lib/utils';
 import { findUserByLeaf, transferP2P } from '../services/stripeService';
+import { useTheme } from '../context/ThemeContext';
+import { BiometricGate } from './BiometricGate';
 
 type TransferType = 'p2p' | 'internal' | 'ach';
 
@@ -38,10 +40,12 @@ interface Recipient {
 
 export function TransferView({ onBack }: { onBack: () => void }) {
   const { user, refreshBalance } = useAuth();
+  const { isFaceIDEnabled } = useTheme();
   const [activeTab, setActiveTab] = useState<TransferType>('p2p');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isBiometricOpen, setIsBiometricOpen] = useState(false);
 
   // Form States
   const [amount, setAmount] = useState('');
@@ -85,8 +89,14 @@ export function TransferView({ onBack }: { onBack: () => void }) {
     }
   }, [recipientLeaf]);
 
-  const handleTransfer = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleTransfer = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (isFaceIDEnabled && !isBiometricOpen && !success) {
+      setIsBiometricOpen(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -376,6 +386,16 @@ export function TransferView({ onBack }: { onBack: () => void }) {
           </button>
         </form>
       </div>
+
+      <BiometricGate 
+        isOpen={isBiometricOpen}
+        onSuccess={() => {
+          setIsBiometricOpen(false);
+          handleTransfer();
+        }}
+        onCancel={() => setIsBiometricOpen(false)}
+        title={activeTab === 'p2p' ? "Authenticate Transfer" : "Authorize Movement"}
+      />
     </div>
   );
 }

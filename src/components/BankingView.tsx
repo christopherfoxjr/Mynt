@@ -95,14 +95,14 @@ export function BankingView({ onBack }: { onBack: () => void }) {
     <div className="space-y-10 animate-in fade-in duration-500 pb-20">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold font-display tracking-tight text-slate-900 mb-2 italic">Banking Center</h1>
-          <p className="text-slate-500 font-medium">Actual Stripe-powered financial accounts.</p>
+          <h1 className="text-4xl font-bold font-display tracking-tight text-slate-900 dark:text-white mb-2 italic">Banking Center</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Actual Stripe-powered financial accounts.</p>
         </div>
         
         <div className="flex gap-4">
           <button 
             onClick={() => setIsDepositVisible(true)}
-            className="btn-primary bg-slate-900 px-8 py-4 rounded-xl flex items-center gap-2 italic hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="btn-primary bg-slate-900 dark:bg-slate-800 px-8 py-4 rounded-xl flex items-center gap-2 italic hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <ArrowDownToLine size={18} />
             <span>Deposit Funds</span>
@@ -120,13 +120,13 @@ export function BankingView({ onBack }: { onBack: () => void }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         <div className="lg:col-span-8 flex flex-col gap-10">
           {/* Real Account Details Card */}
-          <div className="glass-panel p-10 relative overflow-hidden bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-100">
+          <div className="glass-panel p-10 relative overflow-hidden bg-gradient-to-br from-emerald-500/5 to-transparent border-emerald-100 dark:border-emerald-500/20">
              <div className="flex justify-between items-start mb-10">
                 <div>
-                  <h3 className="text-2xl font-bold font-display italic mb-1">Financial Account</h3>
-                  <p className="text-slate-500 text-sm font-medium">Your direct ACH & Wire details.</p>
+                  <h3 className="text-2xl font-bold font-display italic mb-1 dark:text-white">Financial Account</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Your direct ACH & Wire details.</p>
                 </div>
-                <div className="bg-emerald-100/50 p-3 rounded-2xl text-emerald-600">
+                <div className="bg-emerald-100/50 dark:bg-emerald-500/20 p-3 rounded-2xl text-emerald-600">
                    <Landmark size={24} />
                 </div>
              </div>
@@ -134,18 +134,18 @@ export function BankingView({ onBack }: { onBack: () => void }) {
              {accountDetails ? (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                  <div className="space-y-3">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Routing Number</p>
-                   <div className="flex items-center justify-between p-4 bg-white/50 border border-slate-100 rounded-xl group hover:border-emerald-200 transition-colors">
-                      <span className="font-mono text-xl font-bold text-slate-700 tracking-tighter">{accountDetails.routingNumber}</span>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 italic">Routing Number</p>
+                   <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl group hover:border-emerald-200 transition-colors">
+                      <span className="font-mono text-xl font-bold text-slate-700 dark:text-slate-300 tracking-tighter">{accountDetails.routingNumber}</span>
                       <button onClick={() => copyToClipboard(accountDetails.routingNumber, 'Routing Number')} className="text-slate-300 hover:text-emerald-500 transition-colors">
                         <Copy size={16} />
                       </button>
                    </div>
                  </div>
                  <div className="space-y-3">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Account Number</p>
-                   <div className="flex items-center justify-between p-4 bg-white/50 border border-slate-100 rounded-xl group hover:border-emerald-200 transition-colors">
-                      <span className="font-mono text-xl font-bold text-slate-700 tracking-tighter">{accountDetails.accountNumber}</span>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 italic">Account Number</p>
+                   <div className="flex items-center justify-between p-4 bg-white/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl group hover:border-emerald-200 transition-colors">
+                      <span className="font-mono text-xl font-bold text-slate-700 dark:text-slate-300 tracking-tighter">{accountDetails.accountNumber}</span>
                       <button onClick={() => copyToClipboard(accountDetails.accountNumber, 'Account Number')} className="text-slate-300 hover:text-emerald-500 transition-colors">
                         <Copy size={16} />
                       </button>
@@ -154,9 +154,9 @@ export function BankingView({ onBack }: { onBack: () => void }) {
                </div>
              ) : (
                <div className="py-12 flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300 italic font-bold">FA</div>
-                  <h4 className="text-lg font-bold font-display italic text-slate-900 mb-2">No active treasury account</h4>
-                  <p className="text-sm text-slate-500 mb-8 max-w-xs">Set up your individual financial account to start receiving ACH and Wire transfers directly into your Mynt balance.</p>
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-300 italic font-bold">FA</div>
+                  <h4 className="text-lg font-bold font-display italic text-slate-900 dark:text-white mb-2">No active treasury account</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-8 max-w-xs">Set up your individual financial account to start receiving ACH and Wire transfers directly into your Mynt balance.</p>
                   <button 
                     onClick={handleSetupTreasury}
                     disabled={isSettingUp}
@@ -167,18 +167,18 @@ export function BankingView({ onBack }: { onBack: () => void }) {
                </div>
              )}
 
-             <div className="mt-10 pt-10 border-t border-slate-100 flex items-center justify-between">
+             <div className="mt-10 pt-10 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 italic">Live Treasury Environment</span>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 italic">Provided by {accountDetails?.bankName || 'Mynt Bank'}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 italic">Provided by {accountDetails?.bankName || 'Mynt Bank'}</p>
              </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-display">
             {loadingVaults ? (
-              [1, 2].map(i => <div key={i} className="h-64 bg-slate-50 border border-slate-100 rounded-[32px] animate-pulse" />)
+              [1, 2].map(i => <div key={i} className="h-64 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[32px] animate-pulse" />)
             ) : vaults.length > 0 ? (
               vaults.map((vault, i) => (
                 <VaultCard 
@@ -190,10 +190,10 @@ export function BankingView({ onBack }: { onBack: () => void }) {
                 />
               ))
             ) : (
-              <div className="md:col-span-2 p-16 text-center border-2 border-dashed border-slate-100 rounded-[40px]">
-                <Target size={48} className="mx-auto text-slate-200 mb-4" />
-                <h4 className="text-xl font-bold font-display italic text-slate-400">No savings pots yet</h4>
-                <p className="text-sm text-slate-400 font-medium mt-2">Create sub-pots to track specific savings goals.</p>
+              <div className="md:col-span-2 p-16 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[40px]">
+                <Target size={48} className="mx-auto text-slate-200 dark:text-slate-700 mb-4" />
+                <h4 className="text-xl font-bold font-display italic text-slate-400 dark:text-slate-500">No savings pots yet</h4>
+                <p className="text-sm text-slate-400 dark:text-slate-500 font-medium mt-2">Create sub-pots to track specific savings goals.</p>
               </div>
             )}
           </div>
@@ -205,20 +205,20 @@ export function BankingView({ onBack }: { onBack: () => void }) {
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] italic">Swift Transfer</h4>
               <ExternalLink size={14} className="text-slate-300" />
             </div>
-            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
               Use your routing and account numbers to push funds from legacy banks like Chase, BofA, or Wells Fargo.
             </p>
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+            <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
                <ul className="space-y-4">
-                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 italic">
+                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 italic">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                    Standard ACH (1-3 days)
                  </li>
-                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 italic">
+                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 italic">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                    Wire Transfer (Same day)
                  </li>
-                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 italic">
+                 <li className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 italic">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                    Real-time Inbound (RTP)
                  </li>
@@ -295,22 +295,22 @@ function DepositModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: 
         </button>
 
         <div className="text-center mb-8">
-           <div className="w-20 h-20 bg-emerald-50 rounded-3xl flex items-center justify-center text-emerald-600 mx-auto mb-6 shadow-inner">
+           <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-600 mx-auto mb-6 shadow-inner">
              <ArrowDownToLine size={32} />
            </div>
-           <h3 className="text-2xl font-bold font-display italic">Deposit Funds</h3>
-           <p className="text-slate-500 text-sm font-medium mt-1">Move real money into Mynt.</p>
+           <h3 className="text-2xl font-bold font-display italic dark:text-white">Deposit Funds</h3>
+           <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Move real money into Mynt.</p>
         </div>
 
         <form onSubmit={handleDeposit} className="space-y-8">
            <div className="relative">
-              <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 text-2xl">$</span>
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-300 dark:text-slate-600 text-2xl">$</span>
               <input 
                 type="number"
                 placeholder="0.00"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-6 pl-14 pr-6 text-2xl font-black focus:outline-none focus:border-emerald-500 transition-all text-slate-800"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-6 pl-14 pr-6 text-2xl font-black focus:outline-none focus:border-emerald-500 transition-all text-slate-800 dark:text-white"
                 required
               />
            </div>
@@ -419,22 +419,22 @@ function VaultCard({ name, balance, goal, color }: { name: string, balance: numb
       <div className="flex justify-between items-start">
         <div className={cn(
           "w-14 h-14 rounded-[24px] flex items-center justify-center transition-transform group-hover:rotate-12",
-          color === 'emerald' ? "bg-emerald-50 text-emerald-600 shadow-emerald-500/10" : "bg-blue-50 text-blue-600 shadow-blue-500/10"
+          color === 'emerald' ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 shadow-emerald-500/10" : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 shadow-blue-500/10"
         )}>
           <Wallet size={24} />
         </div>
         <div className="text-right">
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest italic mb-1">{name}</p>
-          <p className="text-3xl font-bold font-display italic leading-none">${balance.toLocaleString()}</p>
+          <p className="text-3xl font-bold font-display italic leading-none dark:text-white">${balance.toLocaleString()}</p>
         </div>
       </div>
 
       <div className="space-y-4">
         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest italic">
-          <span className="text-slate-400">Progress</span>
+          <span className="text-slate-400 dark:text-slate-500 font-bold">Progress</span>
           <span className={cn(color === 'emerald' ? "text-emerald-600" : "text-blue-600")}>{progress.toFixed(0)}%</span>
         </div>
-        <div className="h-3 bg-slate-50 border border-slate-100 rounded-full overflow-hidden shadow-inner">
+        <div className="h-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full overflow-hidden shadow-inner">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
@@ -450,12 +450,12 @@ function VaultCard({ name, balance, goal, color }: { name: string, balance: numb
         <div className="flex justify-between items-center pt-2">
           <div className="flex -space-x-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center shadow-sm">
-                <Target size={14} className="text-slate-300" />
+              <div key={i} className="w-9 h-9 rounded-full border-2 border-white dark:border-slate-800 bg-slate-50 dark:bg-slate-700 flex items-center justify-center shadow-sm">
+                <Target size={14} className="text-slate-300 dark:text-slate-500" />
               </div>
             ))}
           </div>
-          <button className="flex items-center gap-2 text-[10px] font-black text-slate-400 hover:text-emerald-500 uppercase tracking-widest italic transition-colors">
+          <button className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 hover:text-emerald-500 dark:hover:text-emerald-400 uppercase tracking-widest italic transition-colors">
             Automate <ArrowRight size={14} />
           </button>
         </div>

@@ -53,9 +53,9 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-lg bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden"
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden"
       >
-        <button onClick={onClose} className="absolute right-8 top-8 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={onClose} className="absolute right-8 top-8 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors z-10">
           <X size={24} />
         </button>
 
@@ -68,10 +68,10 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
               exit={{ opacity: 0, x: -20 }}
               className="py-4 text-center"
             >
-              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-[20px] flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 rounded-[20px] flex items-center justify-center mx-auto mb-6">
                 <Plus size={32} />
               </div>
-              <h3 className="text-3xl font-bold font-display mb-2 tracking-tight italic">Deposit Funds</h3>
+              <h3 className="text-3xl font-bold font-display mb-2 tracking-tight italic dark:text-white">Deposit Funds</h3>
               <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mb-8">Secured by Stripe</p>
               
               <div className="relative flex items-center justify-center mb-12">
@@ -82,7 +82,7 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="text-6xl md:text-7xl font-bold font-display text-slate-900 border-none bg-transparent focus:ring-0 w-[240px] text-center"
+                  className="text-6xl md:text-7xl font-bold font-display text-slate-900 dark:text-white border-none bg-transparent focus:ring-0 w-[240px] text-center"
                 />
               </div>
 
@@ -91,7 +91,7 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                   <button 
                     key={val}
                     onClick={() => setAmount(val.toString())}
-                    className="py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                    className="py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
                   >
                     +${val}
                   </button>
@@ -101,7 +101,7 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
               <div className="flex gap-4">
                 <button 
                   onClick={onClose} 
-                  className="flex-1 btn-secondary py-5 rounded-2xl font-bold bg-slate-50 text-slate-500 hover:bg-slate-100 transition-colors"
+                  className="flex-1 btn-secondary py-5 rounded-2xl font-bold bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border-none"
                 >
                   Cancel
                 </button>
@@ -127,8 +127,8 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
               <div className="flex justify-center mb-10">
                 <Loader2 size={64} className="text-emerald-500 animate-spin" />
               </div>
-              <h3 className="text-2xl font-bold font-display mb-4">Anchoring Deposit...</h3>
-              <p className="text-slate-500 font-medium px-8 text-center italic">
+              <h3 className="text-2xl font-bold font-display mb-4 dark:text-white">Anchoring Deposit...</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium px-8 text-center italic">
                 Verifying transaction through Stripe infrastructure.
               </p>
               <div className="mt-12 flex justify-center items-center gap-4 text-emerald-600 font-bold text-xs uppercase tracking-widest">
@@ -145,14 +145,14 @@ export function DepositModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
               animate={{ opacity: 1, scale: 1 }} 
               className="text-center py-8"
             >
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 size={48} />
               </div>
-              <h3 className="text-3xl font-bold font-display mb-2">Deposit Successful!</h3>
-              <p className="text-slate-500 font-medium mb-10 leading-relaxed px-4">
-                <span className="text-slate-900 font-bold">${parseFloat(amount).toFixed(2)}</span> has been added to your Mynt wallet.
+              <h3 className="text-3xl font-bold font-display mb-2 dark:text-white">Deposit Successful!</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed px-4">
+                <span className="text-slate-900 dark:text-white font-bold">${parseFloat(amount).toFixed(2)}</span> has been added to your Mynt wallet.
               </p>
-              <button onClick={onClose} className="w-full btn-primary py-4 rounded-2xl bg-black">Back to Dashboard</button>
+              <button onClick={onClose} className="w-full btn-primary py-4 rounded-2xl bg-black dark:bg-white dark:text-black">Back to Dashboard</button>
             </motion.div>
           )}
         </AnimatePresence>

@@ -24,82 +24,66 @@ const firebaseConfig = {
   firestoreDatabaseId: config.firestoreDatabaseId,
 };
 
-console.log("Environment Debug:", {
-  GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
-  CONFIG_PROJECT_ID: firebaseConfig.projectId,
-  NODE_ENV: process.env.NODE_ENV
-});
-
-// Initialize Firebase Admin
-// We explore both ambient and config project IDs to resolve audience mismatches
+// Initialize Firebase Admin strictly with config project ID
 const configProjectId = firebaseConfig.projectId;
 let adminApp: any;
 
 try {
-  // Try to use the config project ID for the default app if possible
-  if (getApps().length === 0) {
+  // If a default app exists, check if it matches. If not, delete it to ensure our project is the authority.
+  const apps = getApps();
+  const defaultApp = apps.find(a => a.name === "[DEFAULT]");
+  
+  if (defaultApp && defaultApp.options.projectId !== configProjectId && configProjectId) {
+    console.warn(`Default app project mismatch: ${defaultApp.options.projectId} vs ${configProjectId}. Using named app for strictness.`);
+    // We can't always delete the default app in some environments, so we'll use a named one
+    adminApp = initializeApp({
+      projectId: configProjectId,
+    }, "mynt-admin-authority");
+  } else if (!defaultApp) {
     adminApp = initializeApp({
       projectId: configProjectId,
     });
-    console.log(`Firebase Admin initialized with Project: ${configProjectId}`);
   } else {
-    // If a default app already exists, we check if its project matches
-    const defaultApp = getApps()[0];
-    if (defaultApp.options.projectId !== configProjectId && configProjectId) {
-      console.warn(`Project ID mismatch! Ambient: ${defaultApp.options.projectId}, Config: ${configProjectId}`);
-      // We create a named app to specifically handle Auth for the config project
-      adminApp = initializeApp({
-        projectId: configProjectId,
-      }, "config-auth-app");
-      console.log(`Created secondary Firebase App 'config-auth-app' for Project: ${configProjectId}`);
-    } else {
-      adminApp = defaultApp;
-    }
+    adminApp = defaultApp;
   }
 } catch (e: any) {
-  console.error("Firebase Admin initialization failed, forcing named app:", e.message);
-  try {
-    adminApp = initializeApp({
-      projectId: configProjectId,
-    }, "fallback-app");
-  } catch (err) {
-    adminApp = getApps()[0];
-  }
+  console.warn("Firebase initialization warning:", e.message);
+  // Fallback: try to find any app or create a named one
+  adminApp = getApps().length > 0 ? getApps()[0] : initializeApp({ projectId: configProjectId }, "mynt-fallback");
 }
 
-console.log(`Final Admin App choice: ${adminApp.name} (Project: ${adminApp.options.projectId})`);
+console.log(`Firebase Admin Authority: ${adminApp.name} (Project: ${adminApp.options.projectId})`);
 
 let db: any;
 async function initializeFirestoreAdmin() {
   const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-  console.log(`Initializing Admin Firestore. Preferred: ${dbId} in ${adminApp.options.projectId}`);
+  console.log(`Setting up Admin Firestore. Preferred: ${dbId}`);
   
-  // Potential apps to try
-  const apps = [...getApps()];
-  // Potential database IDs to try
-  const dbIds = [dbId, '(default)'];
+  const dbsToTry = [
+    { app: adminApp, id: dbId },
+    { app: adminApp, id: '(default)' }
+  ];
 
-  for (const app of apps) {
-    for (const dId of dbIds) {
-      console.log(`Probing Firestore on App: ${app.name} (${app.options.projectId}), Database: ${dId}`);
-      try {
-        const testDb = dId !== '(default)' ? getFirestore(app, dId) : getFirestore(app);
-        // We do a real read to verify connectivity and project existence
-        await testDb.collection("users").limit(1).get();
-        console.log(`SUCCESS: Firestore reachable on ${app.name} / ${dId}`);
-        db = testDb;
-        return;
-      } catch (e: any) {
-        console.warn(`Probe FAILED on ${app.name} / ${dId}: ${e.message}`);
-      }
+  for (const entry of dbsToTry) {
+    try {
+      console.log(`Probing Firestore: ${entry.app.name} / ${entry.id}`);
+      const testDb = entry.id !== '(default)' ? getFirestore(entry.app, entry.id) : getFirestore(entry.app);
+      // Verify reachability
+      await testDb.collection("users").limit(1).get();
+      db = testDb;
+      console.log(`Firestore SUCCESS: ${entry.app.name} / ${entry.id}`);
+      return;
+    } catch (e: any) {
+      console.warn(`Firestore Probe FAILED (${entry.app.name} / ${entry.id}): ${e.message}`);
     }
   }
 
-  console.error("CRITICAL: All Firestore probes failed. Defaulting to first available instance.");
+  // Final resort
+  console.error("All Firestore probes failed. Defaulting to standard instance.");
   db = getFirestore(adminApp);
 }
 
-// Helper to get Auth with our specific app
+// Helper to get Auth with our specific authority app
 const getAdminAuth = () => getAuth(adminApp);
 
 const ADMIN_EMAILS = ["spoinkosgithub@gmail.com", "blooper.it@gmail.com"];

@@ -5,9 +5,11 @@ import { cn } from '../lib/utils';
 import { transferP2P, findUserByLeaf } from '../services/stripeService';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
+import { useTheme } from '../context/ThemeContext';
+import { BiometricAuth } from './BiometricAuth';
 
 export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-  const [step, setStep] = useState<'select' | 'amount' | 'success'>('select');
+  const [step, setStep] = useState<'select' | 'amount' | 'verify' | 'success'>('select');
   const [recipient, setRecipient] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -15,6 +17,7 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
   const [loading, setLoading] = useState(false);
   const { user, refreshBalance } = useAuth();
   const { addNotification } = useNotifications();
+  const { isFaceIDEnabled } = useTheme();
 
   // Search logic
   useEffect(() => {
@@ -36,6 +39,14 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
     }
   }, [searchQuery]);
 
+  const onConfirmAmount = () => {
+    if (isFaceIDEnabled) {
+      setStep('verify');
+    } else {
+      handleTransfer();
+    }
+  };
+
   const handleTransfer = async () => {
     if (!recipient) return;
     setLoading(true);
@@ -52,6 +63,7 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
       }
     } catch (err: any) {
       alert(err.message || 'Transfer failed. Please try again.');
+      setStep('amount');
     } finally {
       setLoading(false);
     }
@@ -64,16 +76,16 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
       <motion.div 
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="w-full max-w-lg bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden"
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-2xl relative overflow-hidden"
       >
-        <button onClick={onClose} className="absolute right-8 top-8 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+        <button onClick={onClose} className="absolute right-8 top-8 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors z-10">
           <X size={24} />
         </button>
 
         <AnimatePresence mode="wait">
           {step === 'select' && (
             <motion.div key="select" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <h3 className="text-2xl font-bold font-display mb-2">Send Money</h3>
+              <h3 className="text-2xl font-bold font-display mb-2 dark:text-white">Send Money</h3>
               <p className="text-slate-500 font-medium mb-8">Search for a Mynt user by Leaf (@tag)</p>
               
               <div className="relative mb-8">
@@ -84,7 +96,7 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
                   placeholder="username"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 font-medium transition-all"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500 font-medium transition-all text-slate-900 dark:text-white"
                 />
                 {isSearching && (
                   <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -102,8 +114,8 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
                     onClick={() => setStep('amount')} 
                   />
                 ) : (
-                  <div className="p-12 text-center border-2 border-dashed border-slate-100 rounded-[32px]">
-                    <Search className="mx-auto text-slate-200 mb-2" size={32} />
+                  <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[32px]">
+                    <Search className="mx-auto text-slate-200 dark:text-slate-700 mb-2" size={32} />
                     <p className="text-slate-400 text-sm font-medium">Type a MyntTag to find someone</p>
                   </div>
                 )}
@@ -113,7 +125,7 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
           {step === 'amount' && (
             <motion.div key="amount" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-              <h3 className="text-2xl font-bold font-display mb-2 text-center">Amount to {recipient.displayName}</h3>
+              <h3 className="text-2xl font-bold font-display mb-2 text-center dark:text-white">Amount to {recipient.displayName}</h3>
               <p className="text-slate-500 font-medium mb-12 text-center">Available: ${user?.balance.toFixed(2)}</p>
               
               <div className="relative flex items-center justify-center mb-12">
@@ -124,32 +136,38 @@ export function TransferModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="text-6xl md:text-7xl font-bold font-display text-slate-900 border-none bg-transparent focus:ring-0 w-[240px] text-center"
+                  className="text-6xl md:text-7xl font-bold font-display text-slate-900 dark:text-white border-none bg-transparent focus:ring-0 w-[240px] text-center"
                 />
               </div>
 
               <div className="flex gap-4">
-                <button onClick={() => setStep('select')} className="flex-1 btn-secondary py-4 rounded-2xl">Back</button>
+                <button onClick={() => setStep('select')} className="flex-1 btn-secondary py-4 rounded-2xl dark:bg-slate-800 dark:border-slate-700 dark:text-white">Back</button>
                 <button 
-                  onClick={handleTransfer} 
+                  onClick={onConfirmAmount} 
                   disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > (user?.balance || 0) || loading}
                   className="flex-1 btn-primary py-4 rounded-2xl flex justify-center items-center gap-2"
                 >
-                  {loading ? 'Processing...' : 'Send Now'}
+                  Confirm Send
                   <Send size={18} />
                 </button>
               </div>
             </motion.div>
           )}
 
+          {step === 'verify' && (
+            <motion.div key="verify" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.1 }}>
+              <BiometricAuth onVerify={handleTransfer} />
+            </motion.div>
+          )}
+
           {step === 'success' && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
                 <CheckCircle2 size={48} />
               </div>
-              <h3 className="text-3xl font-bold font-display mb-2">Transfer Successful!</h3>
+              <h3 className="text-3xl font-bold font-display mb-2 dark:text-white italic">Transfer Successful!</h3>
               <p className="text-slate-500 font-medium mb-10 leading-relaxed px-4">
-                You've successfully sent <span className="text-slate-900 font-bold">${parseFloat(amount).toFixed(2)}</span> to <span className="text-slate-900 font-bold">{recipient.displayName}</span>.
+                You've successfully sent <span className="text-slate-900 dark:text-white font-bold">${parseFloat(amount).toFixed(2)}</span> to <span className="text-slate-900 dark:text-white font-bold">{recipient.displayName}</span>.
               </p>
               <button onClick={onClose} className="w-full btn-primary py-4 rounded-2xl">Back to Dashboard</button>
             </motion.div>

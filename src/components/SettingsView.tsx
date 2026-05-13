@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { User, Bell, Shield, Wallet, ChevronRight, Mail, Phone, MapPin, ArrowLeft, AtSign, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { cn } from '../lib/utils';
 import { fetchUserProfile, claimLeaf } from '../services/stripeService';
 
 export function SettingsView({ onBack }: { onBack?: () => void }) {
   const { user, logout } = useAuth();
+  const { 
+    isDarkMode, toggleDarkMode, 
+    isFaceIDEnabled, toggleFaceID, 
+    isPushEnabled, togglePush,
+    isWeeklyReportsEnabled, toggleWeeklyReports 
+  } = useTheme();
+
   const [activeTab, setActiveTab] = useState('Profile');
   const [profile, setProfile] = useState<any>(null);
   const [leafInput, setLeafInput] = useState('');
@@ -137,20 +145,40 @@ export function SettingsView({ onBack }: { onBack?: () => void }) {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                  <SettingInput label="Phone Number" value="+1 (555) 123-4567" icon={<Phone size={16} />} />
-                  <SettingInput label="Location" value="New York, USA" icon={<MapPin size={16} />} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 opacity-40 grayscale pointer-events-none">
+                  <SettingInput label="Phone Number" value="Coming Soon" icon={<Phone size={16} />} />
+                  <SettingInput label="Location" value="Coming Soon" icon={<MapPin size={16} />} />
                 </div>
               </div>
             </div>
 
-            <div className="pt-10 border-t border-slate-100">
+            <div className="pt-10 border-t border-slate-100 dark:border-slate-800">
               <h3 className="text-lg font-bold mb-8">App Preferences</h3>
               <div className="space-y-6">
-                <PreferenceToggle title="Dark Mode" description="Use darker colors for the user interface" enabled={false} />
-                <PreferenceToggle title="Face ID" description="Require biometric authentication for transfers" enabled={true} />
-                <PreferenceToggle title="Push Notifications" description="Get notified about every transaction" enabled={true} />
-                <PreferenceToggle title="Weekly Reports" description="Receive email summaries of your spending" enabled={false} />
+                <PreferenceToggle 
+                  title="Dark Mode" 
+                  description="Use darker colors for the user interface" 
+                  enabled={isDarkMode} 
+                  onToggle={toggleDarkMode}
+                />
+                <PreferenceToggle 
+                  title="Face ID" 
+                  description="Require biometric authentication for transfers" 
+                  enabled={isFaceIDEnabled} 
+                  onToggle={toggleFaceID}
+                />
+                <PreferenceToggle 
+                  title="Push Notifications" 
+                  description="Get notified about every transaction" 
+                  enabled={isPushEnabled} 
+                  onToggle={togglePush}
+                />
+                <PreferenceToggle 
+                  title="Weekly Reports" 
+                  description="Receive email summaries of your spending" 
+                  enabled={isWeeklyReportsEnabled} 
+                  onToggle={toggleWeeklyReports}
+                />
               </div>
             </div>
 
@@ -207,25 +235,23 @@ function SettingInput({ label, value, icon, disabled }: { label: string, value: 
   );
 }
 
-function PreferenceToggle({ title, description, enabled }: { title: string, description: string, enabled: boolean }) {
-  const [isOn, setIsOn] = useState(enabled);
-
+function PreferenceToggle({ title, description, enabled, onToggle }: { title: string, description: string, enabled: boolean, onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between group">
       <div className="flex flex-col">
-        <p className="font-bold text-slate-800 text-sm">{title}</p>
-        <p className="text-xs text-slate-500 font-medium">{description}</p>
+        <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{title}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{description}</p>
       </div>
       <div 
-        onClick={() => setIsOn(!isOn)}
+        onClick={onToggle}
         className={cn(
           "w-12 h-6 rounded-full p-1 transition-all duration-300 cursor-pointer shadow-inner",
-          isOn ? "bg-emerald-500 shadow-emerald-500/20" : "bg-slate-200"
+          enabled ? "bg-emerald-500 shadow-emerald-500/20" : "bg-slate-200 dark:bg-slate-700"
         )}
       >
         <div className={cn(
           "w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-sm",
-          isOn && "translate-x-6"
+          enabled && "translate-x-6"
         )} />
       </div>
     </div>

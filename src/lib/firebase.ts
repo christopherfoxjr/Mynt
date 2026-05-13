@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, doc, getDoc, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import firebaseConfigRaw from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -22,37 +22,23 @@ console.log('Firebase App Options:', {
   databaseId: firebaseConfig.firestoreDatabaseId
 });
 
-let dbInstance;
-try {
-  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
-  console.log(`Initializing client Firestore. Preferred: ${dbId}`);
-  
-  if (dbId !== '(default)') {
-    // We try to initialize with the named database, but wrap it in a way 
-    // that we can potentially know if it fails.
-    dbInstance = initializeFirestore(app, {
-      databaseId: dbId
-    });
-  } else {
-    dbInstance = getFirestore(app);
-  }
-} catch (error) {
-  console.warn("Firestore initialization failed, using fallback", error);
-  dbInstance = getFirestore(app);
-}
+// Correct initialization for named databases in v9+
+const dbId = firebaseConfig.firestoreDatabaseId;
+export const db = dbId && dbId !== '(default)' 
+  ? getFirestore(app, dbId) 
+  : getFirestore(app);
 
-export const db = dbInstance;
 export const auth = getAuth(app);
 
-// Connectivity check as per instructions
+// Connectivity check
 async function testConnection() {
   const testDocId = 'connection';
   const testPath = 'test/' + testDocId;
   
   // Wait for Auth to settle
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 2000));
   
-  console.log(`Checking client connectivity for: ${testPath}`);
+  console.log(`Checking client connectivity for: ${testPath} on database: ${dbId || '(default)'}`);
   try {
     const snap = await getDoc(doc(db, 'test', testDocId));
     console.log("Firestore Connectivity Test: SUCCESS", snap.exists() ? "Document found" : "Document not found (expected)");
@@ -60,27 +46,18 @@ async function testConnection() {
     console.error("Firestore Connectivity Test: FAILED", {
       code: error.code,
       message: error.message,
-      database: (firebaseConfigRaw as any).firestoreDatabaseId || '(default)',
-      projectId: firebaseConfig.projectId
+      projectId: firebaseConfig.projectId,
+      dbId: dbId
     });
     
-    // Attempt fallback to default database if named one looks broken
-    if (error.message && (error.message.includes('offline') || error.message.includes('Failed to get document'))) {
-      console.warn("Named database appears unreachable. This can happen if the database ID in config is wrong or the database was deleted. Retrying with (default)...");
-      try {
-        const fallbackDb = getFirestore(app);
-        await getDoc(doc(fallbackDb, 'test', testDocId));
-        console.log("Firestore FALLBACK (default) Test: SUCCESS");
-        // We can't easily re-export the fallbackDb to already-loaded components,
-        // but this confirms the issue.
-      } catch (fallbackError: any) {
-        console.error("Firestore FALLBACK Test: FAILED", fallbackError.message);
-      }
+    if (error.code === 'permission-denied') {
+      console.error("Firestore Permission Denied. Check your security rules.");
     }
     
-    if (error.code === 'permission-denied') {
-      console.error("Firestore Permission Denied. Check rules and auth state.");
+    if (error.message && (error.message.includes('offline') || error.message.includes('Failed to get document'))) {
+       console.error("CRITICAL: Firestore appears unreachable. Please ensure the Firestore API is enabled and your Project ID / Database ID match the Firebase Console.");
     }
   }
 }
+
 testConnection();
