@@ -1,0 +1,74 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 0. Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitives
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isAdmin() { 
+      return isSignedIn() && (request.auth.token.email in ['spoinkosgithub@gmail.com', 'blooper.it@gmail.com']);
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Patterns
+    function isValidUser(data) {
+      return data.uid is string && 
+             data.email is string && 
+             data.balance is number &&
+             data.uid == request.auth.uid; // Identity Safety
+    }
+
+    // Transaction Patterns
+    function isValidTransaction(data) {
+      return data.type in ['receive', 'spend', 'send', 'deposit', 'withdrawal', 'transfer'] &&
+             data.amount is number &&
+             data.status in ['pending', 'completed', 'failed'] &&
+             data.createdAt == request.time; // Server Timestamp Enforcement
+    }
+
+    // Pots Patterns
+    function isValidPot(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.balance is number &&
+             data.goal is number;
+    }
+
+    // 1. User Profiles
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'leaf', 'cardFrozen', 'balance'])) || isAdmin();
+    }
+
+    // 2. Transactions (Subcollection)
+    match /users/{userId}/transactions/{txId} {
+      allow get, list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidTransaction(incoming());
+      allow update: if false; // Transactions are immutable
+      allow delete: if isAdmin();
+    }
+
+    // 3. Pots (Subcollection)
+    match /users/{userId}/pots/{potId} {
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidPot(incoming());
+        allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'balance', 'goal', 'targetDate']);
+        allow delete: if isOwner(userId);
+    }
+
+    // 4. KYC Submissions
+    match /kyc_submissions/{subId} {
+        allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+        allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+        allow list, update, delete: if isAdmin();
+    }
+  }
+}

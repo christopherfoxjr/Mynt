@@ -1,0 +1,8 @@
+{
+  "name": "Mynt",
+  "description": "A sleek neobank dashboard built with Stripe integration for managing balance, activity, and cash flow.",
+  "region": "us-west1",
+  "publishRegion": "us-west1",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

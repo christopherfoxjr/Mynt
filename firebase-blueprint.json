@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "User profile and financial summary",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "balance": { "type": "number" },
+        "currency": { "type": "string", "enum": ["USD", "EUR", "GBP"] },
+        "kycCompleted": { "type": "boolean" },
+        "stripeAccountId": { "type": "string" },
+        "birthDate": { "type": "string", "format": "date" },
+        "accountType": { "type": "string", "enum": ["adult", "teen"] },
+        "guardianUid": { "type": "string" },
+        "accountStatus": { "type": "string", "enum": ["pending", "active", "restricted"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "balance"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "Records of money movement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["receive", "spend", "send", "deposit", "withdrawal", "transfer"] },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "counterpartyName": { "type": "string" },
+        "counterpartyId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "type", "amount", "status", "createdAt"]
+    },
+    "pot": {
+      "title": "Pot",
+      "description": "A sub-account or savings goal",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "balance": { "type": "number" },
+        "target": { "type": "number" },
+        "category": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "balance"]
+    },
+    "kyc_submission": {
+      "title": "KYC Submission",
+      "description": "User documents for manual verification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "documents": { "type": "array" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email", "status"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "user",
+      "description": "User profile data"
+    },
+    "users/{userId}/transactions/{transactionId}": {
+      "schema": "transaction",
+      "description": "User's transaction history"
+    },
+    "users/{userId}/pots/{potId}": {
+      "schema": "pot",
+      "description": "User's savings pots"
+    },
+    "kyc_submissions/{submissionId}": {
+      "schema": "kyc_submission",
+      "description": "Global KYC queue for admins"
+    }
+  }
+}

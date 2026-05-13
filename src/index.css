@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-mynt-primary: #10b981;
+  --color-mynt-bg: #f8fafc;
+  --color-mynt-card: #ffffff;
+  --color-mynt-text: #0f172a;
+  --color-mynt-muted: #64748b;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+  }
+}
+
+.glass-panel {
+  @apply bg-white border border-slate-100 rounded-[32px] overflow-hidden shadow-sm;
+}
+
+.btn-primary {
+  @apply bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-2xl transition-all duration-300 active:scale-95 shadow-lg shadow-emerald-600/20;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 font-bold py-3 px-8 rounded-2xl transition-all duration-200 active:scale-95 shadow-sm;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+/* For the card flipping or standard neobank effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
