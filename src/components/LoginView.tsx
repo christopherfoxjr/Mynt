@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Eye, EyeOff, ArrowRight, ChevronLeft } from 'lucide-react';
+import { Mail, Eye, EyeOff, ArrowRight, ChevronLeft, Shield, Fingerprint } from 'lucide-react';
+import { BiometricGate } from './BiometricGate';
 import { 
   signInWithPopup, 
   GoogleAuthProvider, 
@@ -10,7 +11,6 @@ import {
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
-import logoImg from '../assets/images/regenerated_image_1778553988012.png';
 
 const googleProvider  = new GoogleAuthProvider();
 const githubProvider  = new GithubAuthProvider();
@@ -27,17 +27,12 @@ export function LoginView() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
 
+  const [showBio, setShowBio] = useState(false);
+  const [pendingAction, setPendingAction] = useState<() => Promise<void> | null>(null);
+
   const wrap = async (label: string, fn: () => Promise<void>) => {
-    setError(null);
-    setLoading(true);
-    try {
-      await fn();
-    } catch (err: any) {
-      console.error(`[${label}]`, err);
-      setError(err.message || 'Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    setPendingAction(() => fn);
+    setShowBio(true);
   };
 
   const handleGoogle        = () => wrap('google',   async () => { await signInWithPopup(auth, googleProvider); });
@@ -66,16 +61,31 @@ export function LoginView() {
       >
         {/* Logo + heading */}
         <div className="flex flex-col items-center mb-10">
-          <img
-            src={logoImg}
-            alt="Mynt"
-            className="w-24 h-24 rounded-[28px] shadow-2xl mb-8 border border-white"
-          />
           <h1 className="text-5xl font-bold font-display tracking-tight italic">Mynt</h1>
           <p className="text-slate-400 mt-3 font-medium text-lg leading-relaxed">
             The next-generation neobank.<br />Securely access your private vault.
           </p>
         </div>
+
+        <BiometricGate 
+          isOpen={showBio}
+          onSuccess={async () => {
+             setShowBio(false);
+             if (pendingAction) {
+                setError(null);
+                setLoading(true);
+                try {
+                  await pendingAction();
+                } catch (err: any) {
+                  console.error(`[auth]`, err);
+                  setError(err.message || 'Something went wrong.');
+                } finally {
+                  setLoading(false);
+                }
+             }
+          }}
+          onCancel={() => setShowBio(false)}
+        />
 
         <AnimatePresence mode="wait">
 

@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, TrendingUp, TrendingDown, Wallet, PieChart, Info, Plus, ChevronRight, Activity, DollarSign, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function WealthView({ onBack }: { onBack: () => void }) {
   const [activeSegment, setActiveSegment] = useState<'stocks' | 'crypto' | 'index'>('stocks');
+  const [assets, setAssets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assets = [
-    { name: 'Apple Inc.', symbol: 'AAPL', price: 189.42, change: +1.24, quantity: 12.5 },
-    { name: 'Bitcoin', symbol: 'BTC', price: 64231.50, change: -2.15, quantity: 0.045 },
-    { name: 'S&P 500 ETF', symbol: 'VOO', price: 472.10, change: +0.45, quantity: 45.0 },
-    { name: 'Nvidia', symbol: 'NVDA', price: 924.11, change: +4.82, quantity: 8.2 },
-  ];
+  useEffect(() => {
+     // TODO: Replace with real Firestore listener for user assets
+     setLoading(false);
+  }, []);
 
   const totalValue = assets.reduce((sum, a) => sum + (a.price * a.quantity), 0);
   const totalChange = assets.reduce((sum, a) => sum + (a.change * a.quantity), 0);
@@ -92,7 +92,7 @@ export function WealthView({ onBack }: { onBack: () => void }) {
 
               <div className="space-y-4">
                  {assets.map((asset, i) => (
-                    <AssetRow key={asset.symbol} asset={asset} />
+                    <AssetRow asset={asset} />
                  ))}
               </div>
            </div>

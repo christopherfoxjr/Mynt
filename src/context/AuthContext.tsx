@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   signOut,
   User as FirebaseUser
@@ -74,6 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Handle redirect result
+    getRedirectResult(auth).catch((error) => {
+      console.error('Redirect login error:', error);
+    });
+
     let unsubscribeDoc: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -213,30 +220,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       prompt: 'select_account'
     });
     
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error: any) {
-      console.error('Login Error:', error);
-      
-      let message = 'Authentication failed. Please try again.';
-      
-      if (error.code === 'auth/operation-not-allowed') {
-        message = 'Google Auth is not enabled in your Firebase project. Please enable "Google" in the Authentication -> Sign-in method section of the Firebase console.';
-      } else if (error.code === 'auth/unauthorized-domain') {
-        const domain = window.location.hostname;
-        message = `This domain (${domain}) is not authorized for Firebase Auth. Please add it to the "Authorized domains" list in the Firebase Console (Authentication -> Settings).`;
-      } else if (error.code === 'auth/popup-blocked') {
-        message = 'The login popup was blocked by your browser. Please allow popups for this site and try again.';
-      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-        message = 'Login was cancelled. Please try again.';
-      } else if (error.message) {
-        message = error.message;
-      }
-      
-      const enhancedError = new Error(message);
-      (enhancedError as any).code = error.code;
-      throw enhancedError;
-    }
+    // Always use redirect for full-page compatibility
+    await signInWithRedirect(auth, provider);
   };
 
   const logout = async () => {

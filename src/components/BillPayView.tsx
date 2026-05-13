@@ -5,7 +5,11 @@ import { cn } from '../lib/utils';
 
 export function BillPayView({ onBack }: { onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'recent' | 'payees'>('upcoming');
-  const [isPaying, setIsPaying] = useState(false);
+  const [bills, setBills] = useState<any[]>([]);
+  const [payees, setPayees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // TODO: Fetch real bills and payees
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -26,6 +30,10 @@ export function BillPayView({ onBack }: { onBack: () => void }) {
           <Plus size={20} />
           <span className="hidden md:inline">Add Payee</span>
         </button>
+      </div>
+      {/* ...rest of the UI will show loading or empty states... */}
+      <div className="glass-panel p-20 text-center text-slate-500">
+         No bills scheduled. Connect your accounts to start paying bills automatically.
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl w-fit">
@@ -48,7 +56,7 @@ export function BillPayView({ onBack }: { onBack: () => void }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-12 xl:col-span-8 space-y-6">
            <AnimatePresence mode="wait">
-              {activeTab === 'upcoming' && (
+               {activeTab === 'upcoming' && (
                 <motion.div 
                     key="upcoming"
                     initial={{ opacity: 0, y: 10 }}
@@ -56,30 +64,22 @@ export function BillPayView({ onBack }: { onBack: () => void }) {
                     exit={{ opacity: 0, y: -10 }}
                     className="space-y-4"
                 >
-                    <BillCard 
-                         merchant="PGE Energy" 
-                         amount={124.50} 
-                         dueDate="May 24" 
-                         status="scheduled" 
-                         category="Utilities" 
-                         icon={<Zap className="text-amber-500" />} 
-                    />
-                    <BillCard 
-                         merchant="Equinox Fitness" 
-                         amount={210.00} 
-                         dueDate="May 28" 
-                         status="pending" 
-                         category="Health" 
-                         icon={<ShieldCheck className="text-emerald-500" />} 
-                    />
-                    <BillCard 
-                         merchant="Comcast Xfinity" 
-                         amount={89.99} 
-                         dueDate="June 02" 
-                         status="scheduled" 
-                         category="Internet" 
-                         icon={<Utility className="text-blue-500" />} 
-                    />
+                    {bills.length === 0 ? (
+                        <div className="glass-panel p-10 text-center text-slate-500">
+                           No upcoming bills.
+                        </div>
+                    ) : (
+                        bills.map(bill => (
+                            <BillCard 
+                                 merchant={bill.merchant} 
+                                 amount={bill.amount} 
+                                 dueDate={bill.dueDate} 
+                                 status={bill.status} 
+                                 category={bill.category} 
+                                 icon={bill.icon} 
+                            />
+                        ))
+                    )}
                 </motion.div>
               )}
            </AnimatePresence>

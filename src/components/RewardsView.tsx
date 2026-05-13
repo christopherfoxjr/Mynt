@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Gift, Star, Zap, ShoppingBag, Coffee, Car, Plane, Target, ChevronRight, Share2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Gift, Star, Zap, ShoppingBag, Coffee, Car, Plane, Target, ChevronRight, Share2, Sparkles, Plus } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export function RewardsView({ onBack }: { onBack: () => void }) {

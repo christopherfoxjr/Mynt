@@ -712,6 +712,14 @@ async function startServer() {
     const uid = req.user.uid;
 
     try {
+      // Limit check
+      const userDoc = await db.doc(`users/${uid}`).get();
+      const userData = userDoc.data();
+      const limit = userData?.transferLimit || 1000;
+      if (amount > limit) {
+        return res.status(400).json({ error: `Transfer exceeds your daily limit of $${limit}` });
+      }
+
       const currentBalance = await getActualBalance(uid);
       if (currentBalance < amount) {
         return res.status(400).json({ error: `Insufficient funds. Current balance: $${currentBalance.toFixed(2)}` });
@@ -789,7 +797,7 @@ async function startServer() {
     }
   });
 
-  // P2P Transfer (Stripe Connect)
+      // P2P Transfer (Stripe Connect)
   app.post("/api/transfer/p2p", authenticateToken, async (req: any, res) => {
     const s = getStripe();
     if (!s) return res.status(500).json({ error: "Stripe not configured" });
@@ -798,6 +806,13 @@ async function startServer() {
     const uid = req.user.uid;
 
     try {
+      const userDoc = await db.doc(`users/${uid}`).get();
+      const userData = userDoc.data();
+      const limit = userData?.transferLimit || 1000;
+      if (amount > limit) {
+        return res.status(400).json({ error: `Transfer exceeds your daily limit of $${limit}` });
+      }
+
       const currentBalance = await getActualBalance(uid);
       if (currentBalance < amount) {
         return res.status(400).json({ error: `Insufficient funds. Current balance: $${currentBalance.toFixed(2)}` });
@@ -822,8 +837,6 @@ async function startServer() {
 
       if (!recipientStripeId) throw new Error("Recipient has not connected a bank account");
 
-      const userDoc = await db.doc(`users/${uid}`).get();
-      const userData = userDoc.data();
       const sourceStripeId = userData?.stripeAccountId;
 
       if (!sourceStripeId) throw new Error("Source account not connected");
@@ -872,6 +885,33 @@ async function startServer() {
       const docPath = `users/${uid}`;
       const errInfo = handleFirestoreError(error, OperationType.WRITE, docPath);
       res.status(400).json(errInfo);
+    }
+  });
+
+  // Reversal Endpoint
+  app.post("/api/transfer/reverse", authenticateToken, async (req: any, res) => {
+    const { transactionId } = req.body;
+    const uid = req.user.uid;
+
+    try {
+      const txRef = db.collection(`users/${uid}/transactions`).doc(transactionId);
+      const txDoc = await txRef.get();
+      if (!txDoc.exists) throw new Error("Transaction not found");
+      
+      const txData = txDoc.data();
+      if (txData?.status !== 'completed' || !txData.reversable) {
+        throw new Error("Transaction cannot be reversed");
+      }
+
+      await db.runTransaction(async (t) => {
+        t.update(txRef, { status: 'reversed' });
+        t.update(db.doc(`users/${uid}`), {
+          balance: FieldValue.increment(-txData.amount) // This assumes positive amount for send/transfer
+        });
+      });
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

@@ -1,7 +1,7 @@
 {
   "firestore": {
     "rules": "firestore.rules",
-    "database": "default"
+    "database": "ai-studio-mynt-4a8db630-b69e-4951-a937-edeb494e4724"
   },
   "hosting": {
     "public": "dist",
